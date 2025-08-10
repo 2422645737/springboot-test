@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.shiyueoe.springdemo.export.mapper.DemoMapper">
+    <!-- 查询所有 -->
+    <select id="get" resultType="com.shiyueoe.springdemo.export.entity.DemoData">
+        SELECT id,
+               name,
+               category,
+               created_at AS createdAt,
+               updated_at AS updatedAt
+        FROM export.demo_data order by id
+        limit #{limit} offset #{offset}
+    </select>
+
+    <select id="countAll" resultType="java.lang.Integer">
+        select count(1) from export.demo_data
+    </select>
+</mapper>
