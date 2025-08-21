@@ -1,11 +1,13 @@
 package com.shiyueoe.springdemo;
 
-import org.mybatis.spring.annotation.MapperScan;
+
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 @SpringBootApplication
-@MapperScan("com.shiyueoe.springdemo.export.mapper")
+@EnableAsync
 public class SpringDemoApplication {
 
     public static void main(String[] args) {

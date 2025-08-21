@@ -1,7 +1,8 @@
 package com.shiyueoe.springdemo.valid.validator;
 
-import jakarta.validation.ConstraintValidator;
-import jakarta.validation.ConstraintValidatorContext;
+
+import javax.validation.ConstraintValidator;
+import javax.validation.ConstraintValidatorContext;
 
 public class LengthBetweenValidator implements ConstraintValidator<LengthBetween,String> {
     private int min;
