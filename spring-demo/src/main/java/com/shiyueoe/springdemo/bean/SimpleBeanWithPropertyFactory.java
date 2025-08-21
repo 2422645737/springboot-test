@@ -47,6 +47,17 @@ public class SimpleBeanWithPropertyFactory {
         for (Map.Entry<String, Object> stringObjectEntry : mbd.getPropertyValues().entrySet()) {
             String propertyName = stringObjectEntry.getKey();
             Object propertyValue = stringObjectEntry.getValue();
+
+            Class<?> propertyBeanType = bean.getClass().getDeclaredField(propertyName).getType();
+
+            //如果没有外部传入属性值，则从beanFactory中获取
+            if(propertyValue == null){
+                Object propertyBean = getBeanByType(propertyBeanType);
+                if(propertyBean != null){
+                    propertyValue = propertyBean;
+                }
+            }
+
             PropertyDescriptor propertyDescriptor = new PropertyDescriptor(propertyName,bean.getClass());
             propertyDescriptor.getWriteMethod().invoke(bean,propertyValue);
         }

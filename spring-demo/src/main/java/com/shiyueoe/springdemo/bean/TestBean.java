@@ -10,9 +10,8 @@ public class TestBean {
 
     private TestRepositoryBean testRepositoryBean;
 
-    public TestBean(String name,TestRepositoryBean testRepositoryBean) {
+    public TestBean(String name) {
         this.name = name;
-        this.testRepositoryBean = testRepositoryBean;
     }
 
 
@@ -32,5 +31,13 @@ public class TestBean {
 
     public String getAge() {
         return age;
+    }
+
+    public TestRepositoryBean getTestRepositoryBean() {
+        return testRepositoryBean;
+    }
+
+    public void setTestRepositoryBean(TestRepositoryBean testRepositoryBean) {
+        this.testRepositoryBean = testRepositoryBean;
     }
 }

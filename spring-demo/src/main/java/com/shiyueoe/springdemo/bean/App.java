@@ -21,6 +21,7 @@ public class App {
         beanDefinition.setAutoWiredConstructor(true);
         beanDefinition.setSingleton(true);
         beanDefinition.getPropertyValues().put("age", "25岁");
+        beanDefinition.getPropertyValues().put("testRepositoryBean", null);
 
 
         Object bean = factory.doCreateBean("testBean", beanDefinition, "wanghui");
