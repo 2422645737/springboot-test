@@ -1,5 +1,7 @@
 package com.shiyueoe.springdemo.bean;
 
+import com.shiyueoe.springdemo.bean.processor.LogBeanProcessor;
+
 import java.util.HashMap;
 
 public class App {
@@ -10,6 +12,7 @@ public class App {
 
         //通过构造函数构造，并注入属性
         SimpleBeanWithPropertyFactory factory = new SimpleBeanWithPropertyFactory();
+        factory.addProcessor(new LogBeanProcessor());
 
         BeanDefinition beanDefinition2 = new BeanDefinition(TestRepositoryBean.class);
         beanDefinition2.setAutoWiredConstructor(true);

@@ -1,13 +1,22 @@
 package com.shiyueoe.springdemo.bean;
 
+import com.shiyueoe.springdemo.bean.processor.BeanPostProcessor;
+
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Constructor;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class SimpleBeanWithPropertyFactory {
+    /**
+     * 单例池
+     */
     private final Map<String, Object> singletonObjects = new HashMap<>();
 
+
+    private final List<BeanPostProcessor> beanPostProcessors = new ArrayList<>();
 
     public Object doCreateBean(String beanName, BeanDefinition mbd, Object... args) throws Exception {
         Object bean = singletonObjects.get(beanName);
@@ -30,16 +39,26 @@ public class SimpleBeanWithPropertyFactory {
             bean = beanClass.newInstance();
         }
 
-        //将对象放入单例池中
-        if(mbd.isSingleton()){
-            singletonObjects.put(beanName, bean);
-        }
 
         //属性注入
         if(!mbd.getPropertyValues().isEmpty()){
             populateBean(bean,mbd);
         }
 
+        //执行postProcessor   before函数
+        for (BeanPostProcessor beanPostProcessor : beanPostProcessors) {
+            bean = beanPostProcessor.postProcessBeforeInitialization(bean,beanName);
+        }
+
+        //执行PostProcessor  after函数
+        for (BeanPostProcessor beanPostProcessor : beanPostProcessors) {
+            bean = beanPostProcessor.postProcessAfterInitialization(bean,beanName);
+        }
+
+        //将对象放入单例池中，这里放置单例池的时机要靠后，要等before和after函数都执行完，再放入单例池中
+        if(mbd.isSingleton()){
+            singletonObjects.put(beanName, bean);
+        }
         return bean;
     }
 
@@ -115,5 +134,9 @@ public class SimpleBeanWithPropertyFactory {
             return new Constructor[]{beanClass.getConstructors()[0]};
         }
         return null;
+    }
+
+    public void addProcessor(BeanPostProcessor processor){
+        this.beanPostProcessors.add(processor);
     }
 }
