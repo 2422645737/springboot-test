@@ -5,6 +5,7 @@ import com.shiyueoe.streamPattern.sink.LevelFilterSink;
 import com.shiyueoe.streamPattern.sink.PrintSink;
 import com.shiyueoe.streamPattern.sink.TrimMessageSink;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 

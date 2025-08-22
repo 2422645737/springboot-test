@@ -1,8 +1,13 @@
 package com.shiyueoe.springdemo.bean;
 
+import com.shiyueoe.springdemo.bean.init.DisposableBean;
+import com.shiyueoe.springdemo.bean.init.InitializingBean;
 import org.springframework.stereotype.Component;
 
-public class TestBean {
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+
+public class TestBean implements InitializingBean, DisposableBean {
 
     private String name;
 
@@ -14,6 +19,15 @@ public class TestBean {
         this.name = name;
     }
 
+    @PostConstruct
+    public void init() {
+        System.out.println("[注解]：TestBean PostConstruct函数执行...");
+    }
+
+    @PreDestroy
+    public void preDestroy() {
+        System.out.println("[注解]：TestBean PreDestroy函数执行...");
+    }
 
     @Override
     public String toString() {
@@ -39,5 +53,16 @@ public class TestBean {
 
     public void setTestRepositoryBean(TestRepositoryBean testRepositoryBean) {
         this.testRepositoryBean = testRepositoryBean;
+    }
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        System.out.println("[接口]：afterPropertiesSet执行中.....");
+    }
+
+    @Override
+    public void destroy() throws Exception {
+        //Spring约定大于配置，优先执行接口的回调方法，再执行注解的销毁方法
+        System.out.println("[接口]：destroyBean执行中.....");
     }
 }

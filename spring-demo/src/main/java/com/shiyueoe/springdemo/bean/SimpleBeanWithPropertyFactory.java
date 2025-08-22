@@ -1,9 +1,14 @@
 package com.shiyueoe.springdemo.bean;
 
+import com.shiyueoe.springdemo.bean.init.DisposableBean;
+import com.shiyueoe.springdemo.bean.init.InitializingBean;
 import com.shiyueoe.springdemo.bean.processor.BeanPostProcessor;
 
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,7 +21,15 @@ public class SimpleBeanWithPropertyFactory {
     private final Map<String, Object> singletonObjects = new HashMap<>();
 
 
+    /**
+     * bean自定义处理器
+     */
     private final List<BeanPostProcessor> beanPostProcessors = new ArrayList<>();
+
+    /**
+     * bean销毁回调
+     */
+    private final Map<String,Object> disposableBeans = new HashMap<>();
 
     public Object doCreateBean(String beanName, BeanDefinition mbd, Object... args) throws Exception {
         Object bean = singletonObjects.get(beanName);
@@ -45,19 +58,40 @@ public class SimpleBeanWithPropertyFactory {
             populateBean(bean,mbd);
         }
 
-        //执行postProcessor   before函数
-        for (BeanPostProcessor beanPostProcessor : beanPostProcessors) {
-            bean = beanPostProcessor.postProcessBeforeInitialization(bean,beanName);
-        }
-
-        //执行PostProcessor  after函数
-        for (BeanPostProcessor beanPostProcessor : beanPostProcessors) {
-            bean = beanPostProcessor.postProcessAfterInitialization(bean,beanName);
-        }
+        bean = initializeBean(beanName, bean);
 
         //将对象放入单例池中，这里放置单例池的时机要靠后，要等before和after函数都执行完，再放入单例池中
         if(mbd.isSingleton()){
             singletonObjects.put(beanName, bean);
+        }
+        return bean;
+    }
+
+    private Object initializeBean(String beanName, Object bean) throws Exception {
+        //执行postProcessor   before函数
+        for (BeanPostProcessor beanPostProcessor : beanPostProcessors) {
+            bean = beanPostProcessor.postProcessBeforeInitialization(bean, beanName);
+        }
+
+        //执行初始化回调,优先执行接口的初始化
+        if(bean instanceof InitializingBean){
+            ((InitializingBean) bean).afterPropertiesSet();
+        }
+
+        //再调用@PostConstruct方法
+        for (Method method : bean.getClass().getMethods()) {
+            if(method.isAnnotationPresent(PostConstruct.class)){
+                method.setAccessible(true);
+                method.invoke(bean);
+            }
+        }
+
+        //注册销毁方法
+        registerDisposableBean(beanName, bean);
+
+        //执行PostProcessor  after函数
+        for (BeanPostProcessor beanPostProcessor : beanPostProcessors) {
+            bean = beanPostProcessor.postProcessAfterInitialization(bean, beanName);
         }
         return bean;
     }
@@ -138,5 +172,47 @@ public class SimpleBeanWithPropertyFactory {
 
     public void addProcessor(BeanPostProcessor processor){
         this.beanPostProcessors.add(processor);
+    }
+
+    /**
+     * 注册销毁方法
+     * @param beanName
+     * @param bean
+     */
+
+    private void registerDisposableBean(String beanName, Object bean){
+        if(bean instanceof DisposableBean){
+            disposableBeans.put(beanName, (DisposableBean)bean);
+        }else {
+            for (Method method : bean.getClass().getMethods()) {
+                if(method.isAnnotationPresent(PreDestroy.class)){
+                    disposableBeans.put(beanName, bean);
+                    break;
+                }
+            }
+        }
+    }
+
+    public void destroySingletons() throws Exception{
+        for (Map.Entry<String, Object> entry : disposableBeans.entrySet()) {
+            String beanName = entry.getKey();
+            Object bean = entry.getValue();
+
+            //spring优先执行接口的销毁方法
+            if(bean instanceof DisposableBean){
+                ((DisposableBean) bean).destroy();
+            }
+
+            //然后执行注解的销毁方法
+            for (Method method : bean.getClass().getMethods()) {
+                if(method.isAnnotationPresent(PreDestroy.class)){
+                    method.setAccessible(true);
+                    method.invoke(bean);
+                }
+            }
+            System.out.println("bean销毁，销毁函数日志打印");
+        }
+
+
     }
 }
