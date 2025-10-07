@@ -15,8 +15,18 @@ public class BeanDefinition {
     private boolean autoWiredConstructor;
 
     private Constructor<?>[] preferredConstructors;
+
+    private String beanName;
     public BeanDefinition(Class<?> beanClass) {
         this.beanClass = beanClass;
+    }
+
+    public String getBeanName() {
+        return beanName;
+    }
+
+    public void setBeanName(String beanName) {
+        this.beanName = beanName;
     }
 
     public Class<?> getBeanClass() {

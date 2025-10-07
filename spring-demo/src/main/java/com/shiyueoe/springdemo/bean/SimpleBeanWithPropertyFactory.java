@@ -3,6 +3,8 @@ package com.shiyueoe.springdemo.bean;
 import com.shiyueoe.springdemo.bean.init.DisposableBean;
 import com.shiyueoe.springdemo.bean.init.InitializingBean;
 import com.shiyueoe.springdemo.bean.processor.BeanPostProcessor;
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.ObjectFactory;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -16,10 +18,20 @@ import java.util.Map;
 
 public class SimpleBeanWithPropertyFactory {
     /**
-     * 单例池
+     * 单例池（一级缓存）
      */
     private final Map<String, Object> singletonObjects = new HashMap<>();
 
+    /**
+     * 二级缓存
+     */
+    private final Map<String,Object> earlySingletonObjects = new HashMap<>();
+
+
+    /**
+     * 三级缓存
+     */
+    private final Map<String, ObjectFactory> singletonFactories = new HashMap<>();
 
     /**
      * bean自定义处理器
@@ -31,8 +43,12 @@ public class SimpleBeanWithPropertyFactory {
      */
     private final Map<String,Object> disposableBeans = new HashMap<>();
 
+    /**
+     * 管理beanDefinition定义
+     */
+    private final Map<Class<?>,BeanDefinition> beanDefinitionMap = new HashMap<>();
     public Object doCreateBean(String beanName, BeanDefinition mbd, Object... args) throws Exception {
-        Object bean = singletonObjects.get(beanName);
+        Object bean = getSingleton(beanName);
 
         if (bean != null) {
             return bean;
@@ -41,17 +57,13 @@ public class SimpleBeanWithPropertyFactory {
         Class<?> beanClass = mbd.getBeanClass();
 
         //选择合适的构造器
-        Constructor<?>[] ctors = determineConstructors(beanClass, mbd);
+        bean = createBeanInstance(mbd, beanClass, args);
 
-        //通过构造器创建对象
-        if (ctors != null || mbd.hasConstructorArgs() || args.length > 0) {
-            bean = autowiredConstructor(beanClass, ctors, args);
-        }else if(mbd.getPreferredConstructors() != null){
-            bean = autowiredConstructor(beanClass, mbd.getPreferredConstructors(), null);
-        }else {
-            bean = beanClass.newInstance();
+        //将半成品bean放入三级缓存
+        if(mbd.isSingleton()){
+            final Object earlyBean = bean;
+            singletonFactories.put(beanName,() -> getEarlyBeanReference(beanName,earlyBean));
         }
-
 
         //属性注入
         if(!mbd.getPropertyValues().isEmpty()){
@@ -62,7 +74,31 @@ public class SimpleBeanWithPropertyFactory {
 
         //将对象放入单例池中，这里放置单例池的时机要靠后，要等before和after函数都执行完，再放入单例池中
         if(mbd.isSingleton()){
+            //升级到一级缓存
             singletonObjects.put(beanName, bean);
+            //从二级缓存中移除
+            earlySingletonObjects.remove(beanName);
+            //从三级缓存中移除
+            singletonFactories.remove(beanName);
+        }
+
+        return bean;
+    }
+
+    private Object getEarlyBeanReference(String beanName, Object bean){
+        return bean;
+    }
+    private Object createBeanInstance(BeanDefinition mbd, Class<?> beanClass, Object[] args) throws Exception {
+        Object bean;
+        Constructor<?>[] ctors = determineConstructors(beanClass, mbd);
+
+        //通过构造器创建对象
+        if (ctors != null || mbd.hasConstructorArgs() || args.length > 0) {
+            bean = autowiredConstructor(beanClass, ctors, args);
+        }else if(mbd.getPreferredConstructors() != null){
+            bean = autowiredConstructor(beanClass, mbd.getPreferredConstructors(), null);
+        }else {
+            bean = beanClass.newInstance();
         }
         return bean;
     }
@@ -105,7 +141,7 @@ public class SimpleBeanWithPropertyFactory {
 
             //如果没有外部传入属性值，则从beanFactory中获取
             if(propertyValue == null){
-                Object propertyBean = getBeanByType(propertyBeanType);
+                Object propertyBean = getBean(propertyBeanType);
                 if(propertyBean != null){
                     propertyValue = propertyBean;
                 }
@@ -114,6 +150,28 @@ public class SimpleBeanWithPropertyFactory {
             PropertyDescriptor propertyDescriptor = new PropertyDescriptor(propertyName,bean.getClass());
             propertyDescriptor.getWriteMethod().invoke(bean,propertyValue);
         }
+    }
+
+    public Object getBean(Class<?> requiredType) throws Exception {
+        Object bean = getBeanByType(requiredType);
+        if(bean != null){
+            return bean;
+        }
+
+        BeanDefinition beanDefinitionByType = getBeanDefinitionByType(requiredType);
+
+        if(beanDefinitionByType != null){
+            return doGetBean(beanDefinitionByType.getBeanName(),beanDefinitionByType);
+        }
+        return null;
+    }
+
+    private Object doGetBean(String beanName, BeanDefinition beanDefinitionByType) throws Exception {
+        return doCreateBean(beanName,beanDefinitionByType);
+    }
+
+    private BeanDefinition getBeanDefinitionByType(Class<?> requiredType) {
+         return beanDefinitionMap.get(requiredType);
     }
 
     /**
@@ -155,9 +213,25 @@ public class SimpleBeanWithPropertyFactory {
     }
 
     private Object getBeanByType(Class<?> parameterType) {
-        for (Object bean : singletonObjects.values()) {
-            if(parameterType.isAssignableFrom(bean.getClass())){
-                return bean;
+        Object singleton = null;
+        for (String beanName : singletonObjects.keySet()) {
+            singleton = getSingleton(beanName);
+            if(singleton != null && parameterType.isAssignableFrom(singleton.getClass())){
+                return singleton;
+            }
+        }
+
+        for(String beanName : earlySingletonObjects.keySet()){
+            singleton = earlySingletonObjects.get(beanName);
+            if(singleton != null && parameterType.isAssignableFrom(singleton.getClass())){
+                return singleton;
+            }
+        }
+
+        for(String beanName : singletonFactories.keySet()){
+            singleton = singletonFactories.get(beanName);
+            if(singleton != null && parameterType.isAssignableFrom(singleton.getClass())){
+                return singleton;
             }
         }
         return null;
@@ -212,7 +286,27 @@ public class SimpleBeanWithPropertyFactory {
             }
             System.out.println("bean销毁，销毁函数日志打印");
         }
+    }
 
+    private Object getSingleton(String beanName){
+        Object bean = singletonObjects.get(beanName);
+        if(bean == null){
+            bean = earlySingletonObjects.get(beanName);
+            if(bean == null){
+                ObjectFactory factory = singletonFactories.get(beanName);
+                if(factory != null){
+                    Object object = factory.getObject();
+                    //加入二级缓存
+                    earlySingletonObjects.put(beanName, object);
+                    //清除三级缓存
+                    singletonFactories.remove(beanName);
+                }
+            }
+        }
+        return bean;
+    }
 
+    public void addBeanDefinition(Class<?> type, BeanDefinition mbd){
+        this.beanDefinitionMap.put(type, mbd);
     }
 }

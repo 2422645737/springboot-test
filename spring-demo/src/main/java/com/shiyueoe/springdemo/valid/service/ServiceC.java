@@ -2,7 +2,6 @@ package com.shiyueoe.springdemo.valid.service;
 
 
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 
@@ -14,7 +13,6 @@ public class ServiceC implements IServiceC{
 
 
     @Override
-    @Transactional
     public void say() {
         serviceA.say("hello");
     }

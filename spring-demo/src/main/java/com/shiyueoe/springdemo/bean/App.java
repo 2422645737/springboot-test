@@ -6,6 +6,7 @@ import com.shiyueoe.springdemo.bean.aop.LogExecution;
 import com.shiyueoe.springdemo.bean.aop.LogExecutionInterceptor;
 import com.shiyueoe.springdemo.bean.processor.AopProxyPostProcessor;
 import com.shiyueoe.springdemo.bean.processor.LogBeanProcessor;
+import com.shiyueoe.springdemo.bean.service.AdminServiceImpl;
 import com.shiyueoe.springdemo.bean.service.UserService;
 import com.shiyueoe.springdemo.bean.service.UserServiceImpl;
 
@@ -42,10 +43,21 @@ public class App {
         BeanDefinition beanDefinition = new BeanDefinition(UserServiceImpl.class);
         beanDefinition.setAutoWiredConstructor(true);
         beanDefinition.setSingleton(true);
-        Object bean = factory.doCreateBean("userService", beanDefinition);
-        String userName = ((UserService)bean).getUserById(1000L);
+        beanDefinition.setBeanName("userServiceImpl");
+        beanDefinition.getPropertyValues().put("adminService", null);
 
-        System.out.println(userName);
+        BeanDefinition beanDefinition1 = new BeanDefinition(AdminServiceImpl.class);
+        beanDefinition1.setAutoWiredConstructor(true);
+        beanDefinition1.setSingleton(true);
+        beanDefinition1.setBeanName("adminServiceImpl");
+        beanDefinition1.getPropertyValues().put("userService", null);
+
+        factory.addBeanDefinition(UserServiceImpl.class, beanDefinition);
+        factory.addBeanDefinition(AdminServiceImpl.class, beanDefinition1);
+
+        Object bean = factory.doCreateBean("userService", beanDefinition);
+        Object bean1 = factory.doCreateBean("adminService", beanDefinition1);
+
         factory.destroySingletons();
     }
 }

@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 import javax.annotation.Resource;
 
 @Aspect
-@Component
+//@Component
 public class LogParamAspect {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
